@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Countdown Timer</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        #countdown-container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        #countdown {
+            font-size: 24px;
+            color: #e44d26;
+            margin: 20px 0;
+        }
+
+        #countdown.expired {
+            color: #666;
+        }
+
+        #user-input {
+            margin-top: 20px;
+            padding: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #suggestions-dropdown {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="countdown-container">
+        <h1>Countdown Timer</h1>
+        <p id="countdown"></p>
+
+        <!-- Form for user input with dropdown -->
+        <form>
+            <label for="user-input">Enter Information:</label>
+            <input type="text" id="user-input" name="user-input" placeholder="Type here..." oninput="generateSuggestions()">
+
+            <!-- Dropdown menu for suggestions -->
+            <select id="suggestions-dropdown" size="5">
+                {% for suggestion in suggestions %}
+                    <option value="{{ suggestion }}">{{ suggestion }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <!-- Show the expired message -->
+        <p id="countdown-expired-message"></p>
+    </div>
+
+    <script>
+        // Parse the time remaining from the Flask template
+        var targetDates = {
+            {% for suggestion, target_date in target_dates.items() %}
+                "{{ suggestion }}": {{ target_date.timestamp() * 1000 }}, // Convert to milliseconds
+            {% endfor %}
+        };
+        var suggestions = {{ suggestions|tojson|safe }};
+
+        var dropdown = document.getElementById("suggestions-dropdown");
+        var countdownContainer = document.getElementById("countdown-container");
+
+        // Initialize the countdownExpiredMessage element
+        var countdownExpiredMessage = document.getElementById("countdown-expired-message");
+
+        // Add a double-click event listener to the dropdown
+        dropdown.addEventListener("dblclick", function() {
+            startCountdown();
+        });
+
+        function startCountdown() {
+            var selectedOption = dropdown.value;
+            var targetDate = targetDates[selectedOption];
+
+            console.log("Target Date for" + selectedOption + ":", targetDate);
+
+            if (targetDate) {
+                // Create a new countdown element for the selected option
+                var countdownElement = document.createElement("div");
+                countdownElement.className = "countdown-item";
+
+                // Append the new countdown element to the container
+                countdownContainer.appendChild(countdownElement);
+
+                var countdownInterval = setInterval(function() {
+                    // Calculate time remaining and update the countdown
+                    var currentDate = Math.floor(new Date().getTime());
+                    var timeRemaining = targetDate - currentDate;
+                    // Display the countdown
+                    updateCountdown(countdownElement, timeRemaining, selectedOption);
+
+                    // If the countdown is over, display a message
+                    if (timeRemaining < 0) {
+                        clearInterval(countdownInterval);
+
+                        // Display the expired message
+                        countdownExpiredMessage.innerHTML = "Countdown for " + selectedOption + " expired";
+
+                        // You can customize what to do when the countdown expires for a specific option
+                        console.log(selectedOption + " countdown expired");
+                    }
+                }, 1000);
+            }
+        }
+
+        function updateCountdown(countdownElement, timeRemaining, selectedOption) {
+            // Calculate days, hours, minutes, and seconds
+            var days = Math.floor(timeRemaining / (1000 * 60 * 60 * 24));
+            var hours = Math.floor((timeRemaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            var minutes = Math.floor((timeRemaining % (1000 * 60 * 60)) / (1000 * 60));
+            var seconds = Math.floor((timeRemaining % (1000 * 60)) / 1000);
+
+            // Display the countdown only if the event is in the future
+            if (timeRemaining > 0) {
+                countdownElement.innerHTML = "Countdown for " + selectedOption + ": " + days + "d " + hours + "h " + minutes + "m " + seconds + "s ";
+            }
+        }
+
+        // Function to generate and display suggestions
+        function generateSuggestions() {
+            var userInput = document.getElementById("user-input").value.toLowerCase();
+
+            dropdown.innerHTML = "";
+
+
+            // Filter suggestions based on user input
+            var filteredSuggestions = suggestions.filter(function (suggestion) {
+                return suggestion.toLowerCase().includes(userInput);
+            });
+
+            // Add filtered suggestions to the dropdown
+            filteredSuggestions.forEach(function (suggestion) {
+                var option = document.createElement("option");
+                option.value = suggestion;
+                option.textContent = suggestion;
+                dropdown.appendChild(option);
+            });
+
+        }
+    </script>
+</body>
+</html>
